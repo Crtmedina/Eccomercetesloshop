@@ -33,7 +33,7 @@ export default async function Productpage({ params }: Props) {
     ])
 
     //  Redireccionar si el producto no existe
-    if (!product) {
+    if (!product && slug !== 'new') {
         redirect('/admin/products')
     }
     // Determinar el título de la página
@@ -44,7 +44,7 @@ export default async function Productpage({ params }: Props) {
         <>
             <Title title={title} subtitle="" />
 
-            <ProductForm product={product} categories={categories} />
+            <ProductForm product={product ?? {}} categories={categories} />
         </>
     )
 }

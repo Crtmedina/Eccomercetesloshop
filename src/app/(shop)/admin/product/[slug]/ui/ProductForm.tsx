@@ -1,10 +1,14 @@
 "use client";
 
-import { Category, Product } from "@/interfaces";
+import { Category, Product, ProductImage } from "@/interfaces";
+import clsx from "clsx";
+import Image from "next/image";
 import { useForm } from 'react-hook-form';
+import { createUpdateProduct } from '../../../../../../actions/product/create-update-product';
+import { useRouter } from "next/navigation";
 
 interface Props {
-    product: Product;
+    product: Partial<Product> & { ProductImage?: ProductImage[] };
     categories: Category[];
 }
 
@@ -17,31 +21,79 @@ interface FormInputs {
     price: number;
     inStock: number;
     sizes: string[];
-    tags: string; // camisa, t-shirt. etc
-    gender: 'men' | 'women' | 'kid' | 'unisex';
+    tags: string;
+    gender: "men" | "women" | "kid" | "unisex";
     categoryId: string;
 
     //TODO: imagenes
+    images?: FileList;
 }
 
 export const ProductForm = ({ product, categories }: Props) => {
 
+    const router = useRouter();
 
     const {
         handleSubmit,
         register,
         formState: { isValid },
+        getValues,
+        setValue,
+        watch,
     } = useForm<FormInputs>({
         defaultValues: {
             ...product,
-            tags: product.tags.join(', '),
+            tags: product.tags?.join(", "),
             sizes: product.sizes ?? [],
+
             // TODO: images
+            images: undefined,
         }
     });
 
+    watch('sizes');
+
+    const onSizeChanged = (size: string) => {
+        const sizes = new Set(getValues("sizes"));
+        sizes.has(size) ? sizes.delete(size) : sizes.add(size);
+        setValue("sizes", Array.from(sizes));
+    };
+
+
     const onSubmit = async (data: FormInputs) => {
-        console.log({ data })
+
+        const formData = new FormData();
+
+        const { images, ...productToSave } = data;
+
+        if (product.id) {
+            formData.append("id", product.id ?? "");
+        }
+
+        formData.append("title", productToSave.title);
+        formData.append("slug", productToSave.slug);
+        formData.append("description", productToSave.description);
+        formData.append("price", productToSave.price.toString());
+        formData.append("inStock", productToSave.inStock.toString());
+        formData.append("sizes", productToSave.sizes.toString());
+        formData.append("tags", productToSave.tags);
+        formData.append("categoryId", productToSave.categoryId);
+        formData.append("gender", productToSave.gender);
+
+        if (images) {
+            for (let i = 0; i < images.length; i++) {
+                formData.append('images', images[i]);
+            }
+        }
+
+        const { ok, product: updatedProduct } = await createUpdateProduct(formData);
+
+        if (!ok) {
+            alert('Producto no se pudo actualiar')
+            return;
+        }
+
+        router.replace(`/admin/product/${updatedProduct?.slug}`)
     }
 
     return (
@@ -133,7 +185,17 @@ export const ProductForm = ({ product, categories }: Props) => {
             </div>
 
             {/* Selector de tallas y fotos */}
+
             <div className="w-full">
+
+                <div className="flex flex-col mb-2">
+                    <span>Inventario</span>
+                    <input
+                        type="number"
+                        className="p-2 border rounded-md bg-gray-200"
+                        {...register('inStock', { required: true, min: 0 })}
+                    />
+                </div>
                 {/* As checkboxes */}
                 <div className="flex flex-col">
 
@@ -145,7 +207,13 @@ export const ProductForm = ({ product, categories }: Props) => {
                                 // bg-blue-500 text-white <--- si está seleccionado
                                 <div
                                     key={size}
-                                    className="flex  items-center justify-center w-10 h-10 mr-2 border rounded-md"
+                                    onClick={() => onSizeChanged(size)}
+                                    className={clsx(
+                                        "p-2 cursor-pointer border rounded-md mr-2 mb-2 w-14 transition-all text-center",
+                                        {
+                                            'bg-blue-500 text-white': getValues('sizes').includes(size)
+                                        }
+                                    )}
                                 >
                                     <span>{size}</span>
                                 </div>
@@ -160,11 +228,38 @@ export const ProductForm = ({ product, categories }: Props) => {
                         <span>Fotos</span>
                         <input
                             type="file"
+                            {...register('images')}
                             multiple
                             className="p-2 border rounded-md bg-gray-200"
-                            accept="image/png, image/jpeg"
+                            accept="image/png, image/jpeg, image/avif"
                         />
 
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {
+                            product.ProductImage?.map(image => (
+                                <div key={image.id}>
+                                    <Image
+                                        alt={product.title ?? ''}
+                                        src={`/products/${image.url}`}
+                                        width={300}
+                                        height={300}
+                                        className="rounded-t shadow-md"
+                                    />
+
+                                    <button
+                                        type="button"
+                                        onClick={() => console.log(image.id, image.url)}
+                                        className="btn-danger w-full rounded-b-xl">
+                                        Eliminar
+                                    </button>
+
+                                </div>
+
+
+                            ))
+                        }
                     </div>
 
                 </div>

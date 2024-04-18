@@ -57,7 +57,11 @@ export interface CartProduct {
     size: Size;
     image: string;
 }
-
+export interface ProductImage {
+    id: number;
+    url: string;
+    productId: string;
+}
 /**
  * Tipos de tallas válidas para los productos.
  */
