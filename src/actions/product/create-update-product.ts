@@ -85,7 +85,16 @@ export const createUpdateProduct = async (formData: FormData) => {
             if (formData.getAll('images')) {
                 // https://url.jpg
                 const images = await uploadImages(formData.getAll('images') as File[]);
-                console.log(images)
+                if (!images) {
+                    throw new Error('No se pudo cargar las imagenes, rollingback')
+                }
+
+                await prisma.productImage.createMany({
+                    data: images.map(image => ({
+                        url: image!,
+                        productId: product.id,
+                    }))
+                });
             }
 
 
@@ -120,6 +129,7 @@ export const createUpdateProduct = async (formData: FormData) => {
 const uploadImages = async (images: File[]) => {
 
     try {
+
         const uploadPromises = images.map(async (image) => {
 
             try {
@@ -132,14 +142,20 @@ const uploadImages = async (images: File[]) => {
             } catch (error) {
                 console.log(error);
                 return null;
-
             }
-
         })
+
 
         const uploadedImages = await Promise.all(uploadPromises);
         return uploadedImages;
 
+
     } catch (error) {
+
+        console.log(error);
+        return null;
+
     }
+
+
 }
