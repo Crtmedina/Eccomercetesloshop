@@ -53,7 +53,7 @@ export const AddressForm = ({ countries, userStoredAddress = {} }: Props) => {
             // console.log("Restableciendo formulario con los datos de la dirección:", address);
             reset(address)
         }
-    }, [address])
+    }, [address, reset])
 
 
 
